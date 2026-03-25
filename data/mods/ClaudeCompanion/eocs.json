@@ -1,0 +1,16 @@
+[
+  {
+    "type": "effect_on_condition",
+    "id": "EOC_CLAUDE_COMPANION_GRANT_DEVICE",
+    "//": "Give the player the AI companion device at game start",
+    "eoc_type": "EVENT",
+    "required_event": "game_start",
+    "effect": [
+      { "u_spawn_item": "claude_companion_device" },
+      {
+        "u_message": "You find a ruggedized handheld device in your pocket.  Its screen glows faintly — somehow, it still has a connection.",
+        "type": "good"
+      }
+    ]
+  }
+]

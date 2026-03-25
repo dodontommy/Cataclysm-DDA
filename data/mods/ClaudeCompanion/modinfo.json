@@ -1,0 +1,11 @@
+[
+  {
+    "type": "MOD_INFO",
+    "id": "claude_companion",
+    "name": "Claude Companion",
+    "authors": [ "machi" ],
+    "description": "Adds an AI companion device that connects to Claude for real-time survival guidance.  Activate it to get contextual advice based on your current game state.",
+    "category": "misc_additions",
+    "dependencies": [ "dda" ]
+  }
+]

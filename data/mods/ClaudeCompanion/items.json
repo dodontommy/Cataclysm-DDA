@@ -1,0 +1,27 @@
+[
+  {
+    "type": "item_action",
+    "id": "CLAUDE_COMPANION",
+    "name": { "str": "Consult AI" }
+  },
+  {
+    "type": "TOOL",
+    "id": "claude_companion_device",
+    "name": { "str": "AI survival companion" },
+    "description": "A ruggedized handheld device with a cracked but functional screen.  Despite the apocalypse, it still connects to a remarkably knowledgeable AI assistant.  Activate it to consult the AI about survival strategy, crafting, combat tactics, or anything else you need help with.  It seems to know a disturbing amount about the Cataclysm.",
+    "weight": "280 g",
+    "volume": "180 ml",
+    "longest_side": "14 cm",
+    "price": "0 cent",
+    "price_postapoc": "50 USD",
+    "material": [ "plastic", "aluminum" ],
+    "symbol": ";",
+    "color": "cyan",
+    "initial_charges": 200,
+    "max_charges": 200,
+    "charges_per_use": 1,
+    "ammo": [ "battery" ],
+    "use_action": [ "CLAUDE_COMPANION" ],
+    "flags": [ "WATCH", "WATER_BREAK_ACTIVE", "ELECTRONIC" ]
+  }
+]

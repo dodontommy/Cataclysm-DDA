@@ -230,6 +230,9 @@ std::optional<int> handle_ground_graffiti( Character &p, item *it, const std::st
 
 //helper for lit cigs
 std::optional<std::string> can_smoke( const Character &you );
+
+// AI COMPANION
+std::optional<int> claude_companion( Character *, item *, const tripoint_bub_ms & );
 } // namespace iuse
 
 void remove_radio_mod( item &it, Character &p );

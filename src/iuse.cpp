@@ -9261,6 +9261,156 @@ std::optional<int> iuse::voltmeter( Character *p, item *it, const tripoint_bub_m
     return 1;
 }
 
+std::optional<int> iuse::claude_companion( Character *p, item *it, const tripoint_bub_ms & )
+{
+    if( p->is_npc() ) {
+        return std::nullopt;
+    }
+
+    p->add_msg_if_player( m_info,
+                          _( "You power on the %s.  Its screen flickers to life..." ), it->tname() );
+
+    // Build game context string
+    std::ostringstream ctx;
+    ctx << "=== CURRENT GAME STATE ===\n\n";
+
+    // Character basics
+    ctx << "## Character: " << p->get_name() << "\n";
+    ctx << "Stats: STR " << p->get_str() << " DEX " << p->get_dex()
+        << " INT " << p->get_int() << " PER " << p->get_per() << "\n";
+    ctx << "Overall HP: " << p->hp_percentage() << "%\n";
+
+    // Body part HP
+    ctx << "\n## Body Part HP:\n";
+    for( const bodypart_id &bp : p->get_all_body_parts() ) {
+        ctx << "  " << body_part_name( bp ) << ": "
+            << p->get_part_hp_cur( bp ) << "/" << p->get_part_hp_max( bp ) << "\n";
+    }
+
+    // Needs
+    ctx << "\n## Needs:\n";
+    ctx << "  Hunger: " << p->get_hunger() << "\n";
+    ctx << "  Thirst: " << p->get_thirst() << "\n";
+    ctx << "  Stored kcal: " << p->get_stored_kcal() << "\n";
+    ctx << "  Pain: " << p->get_pain() << "\n";
+    ctx << "  Stamina: " << p->get_stamina() << "/" << p->get_stamina_max() << "\n";
+
+    // Skills
+    ctx << "\n## Skills:\n";
+    for( const std::pair<const skill_id, SkillLevel> &pair : p->get_all_skills() ) {
+        const float level = pair.second.knowledgeLevel();
+        if( level > 0 ) {
+            ctx << "  " << pair.first->name() << ": " << level << "\n";
+        }
+    }
+
+    // Mutations/Traits
+    std::vector<trait_id> mutations = p->get_mutations( true );
+    if( !mutations.empty() ) {
+        ctx << "\n## Mutations/Traits:\n";
+        for( const trait_id &mut : mutations ) {
+            ctx << "  " << mut->name() << "\n";
+        }
+    }
+
+    // Bionics
+    std::vector<bionic_id> bionics = p->get_bionics();
+    if( !bionics.empty() ) {
+        ctx << "\n## Bionics:\n";
+        for( const bionic_id &bio : bionics ) {
+            ctx << "  " << bio->name.translated() << "\n";
+        }
+    }
+
+    // Wielded item
+    std::vector<item *> all_items = p->inv_dump();
+    if( !all_items.empty() ) {
+        ctx << "\n## Inventory (" << all_items.size() << " items):\n";
+        int count = 0;
+        for( const item *inv_it : all_items ) {
+            if( inv_it && count < 60 ) {
+                ctx << "  " << inv_it->tname() << "\n";
+                count++;
+            }
+        }
+        if( count >= 60 ) {
+            ctx << "  ... and more items\n";
+        }
+    }
+
+    // Time and environment
+    ctx << "\n## Environment:\n";
+    ctx << "  Time: " << to_string_time_of_day( calendar::turn ) << "\n";
+    ctx << "  Season: " << calendar::name_season( season_of_year( calendar::turn ) ) << "\n";
+    ctx << "  Day: " << day_of_season<int>( calendar::turn ) + 1 << "\n";
+    ctx << "  Weather: " << get_weather().weather_id->name.translated() << "\n";
+
+    // Location
+    const oter_id &cur_ter = overmap_buffer.ter( p->pos_abs_omt() );
+    ctx << "  Location terrain: " << cur_ter->get_name() << "\n";
+
+    // Nearby creatures
+    ctx << "\n## Nearby Creatures:\n";
+    creature_tracker &creatures = get_creature_tracker();
+    const map &here = get_map();
+    int creature_count = 0;
+    for( const tripoint_bub_ms &dest : here.points_in_radius( p->pos_bub(), 30 ) ) {
+        if( const Creature *critter = creatures.creature_at( dest ) ) {
+            if( critter != p && p->sees( here, *critter ) ) {
+                int dist = rl_dist( p->pos_bub(), dest );
+                ctx << "  " << critter->disp_name() << " (distance: " << dist << ")\n";
+                creature_count++;
+                if( creature_count >= 20 ) {
+                    ctx << "  ... and more creatures nearby\n";
+                    break;
+                }
+            }
+        }
+    }
+    if( creature_count == 0 ) {
+        ctx << "  None visible\n";
+    }
+
+    // Resolve paths for context and system prompt files
+    std::string context_path;
+    std::string prompt_path;
+#if defined(_WIN32)
+    const char *home = getenv( "USERPROFILE" );
+    context_path = std::string( home ? home : "." ) + "\\.cdda-claude-context.md";
+    prompt_path = std::string( home ? home : "." ) + "\\.cdda-claude-system-prompt.md";
+#else
+    const char *home = getenv( "HOME" );
+    context_path = std::string( home ? home : "." ) + "/.cdda-claude-context.md";
+    prompt_path = std::string( home ? home : "." ) + "/.cdda-claude-system-prompt.md";
+#endif
+
+    // Write game context to file (updated every activation)
+    write_to_file( context_path, [&]( std::ostream & fout ) {
+        fout << ctx.str();
+    }, "claude companion context" );
+
+    p->add_msg_if_player( m_good,
+                          _( "The %s hums softly.  Switch to the terminal to speak with it." ), it->tname() );
+
+    // Launch Claude in a new terminal window with interactive session
+    // Uses --resume to maintain conversation continuity across activations
+    // Uses --system-prompt-file for CDDA expert personality
+    // Context file path is passed as the initial message so Claude reads it
+    std::string cmd;
+#if defined(_WIN32)
+    cmd = string_format(
+              R"(start "CDDA Companion" cmd /k claude --resume cdda --system-prompt-file "%s" "I just activated my companion device. My updated game state has been written to: %s - please read it and greet me with a brief status summary.")",
+              prompt_path, context_path );
+#else
+    cmd = string_format(
+              R"(x-terminal-emulator -e bash -c 'claude --resume cdda --system-prompt-file "%s" "I just activated my companion device. My updated game state has been written to: %s - please read it and greet me with a brief status summary."' &)",
+              prompt_path, context_path );
+#endif
+    std::system( cmd.c_str() ); // NOLINT(cert-env33-c)
+
+    return 0;
+}
+
 void use_function::dump_info( const item &it, std::vector<iteminfo> &dump ) const
 {
     if( actor != nullptr ) {

@@ -1990,6 +1990,7 @@ void Item_factory::init()
     add_iuse( "BLECH_BECAUSE_UNCLEAN", &iuse::blech_because_unclean );
     add_iuse( "BOLTCUTTERS", &iuse::boltcutters );
     add_iuse( "CAMERA", &iuse::camera );
+    add_iuse( "CLAUDE_COMPANION", &iuse::claude_companion );
     add_iuse( "CAN_GOO", &iuse::can_goo );
     add_iuse( "COIN_FLIP", &iuse::coin_flip );
     add_iuse( "DIRECTIONAL_HOLOGRAM", &iuse::directional_hologram );
