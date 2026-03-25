@@ -108,6 +108,7 @@
 #include "ret_val.h"
 #include "rng.h"
 #include "safe_reference.h"
+#include "skill.h"
 #include "sounds.h"
 #include "speech.h"
 #include "stomach.h"
@@ -9298,7 +9299,7 @@ std::optional<int> iuse::claude_companion( Character *p, item *it, const tripoin
     // Skills
     ctx << "\n## Skills:\n";
     for( const std::pair<const skill_id, SkillLevel> &pair : p->get_all_skills() ) {
-        const float level = pair.second.knowledgeLevel();
+        const int level = pair.second.knowledgeLevel();
         if( level > 0 ) {
             ctx << "  " << pair.first->name() << ": " << level << "\n";
         }
@@ -9347,7 +9348,7 @@ std::optional<int> iuse::claude_companion( Character *p, item *it, const tripoin
 
     // Location
     const oter_id &cur_ter = overmap_buffer.ter( p->pos_abs_omt() );
-    ctx << "  Location terrain: " << cur_ter->get_name() << "\n";
+    ctx << "  Location terrain: " << cur_ter->get_name( om_vision_level::full ) << "\n";
 
     // Nearby creatures
     ctx << "\n## Nearby Creatures:\n";
